@@ -36,7 +36,7 @@ def GetDates(table):
 def SaveToWorkbook(users, date_list, ulist):
     wb = Workbook()
     font = Font(color = colors.RED)
-    morning = datetime.time(9)
+    morning = datetime.time(9, 1)
     evening = datetime.time(18)
     for id in users:
         if id not in ulist:
