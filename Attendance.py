@@ -1,12 +1,15 @@
 import os.path
 import datetime
 import os
+import threading
 
 import babel
 import babel.numbers
 
 import utils
 import excel_handler
+
+#from time import sleep
 
 class GoalItem:
     def __init__(self, earliest, last):
@@ -86,8 +89,7 @@ def GetAttendance(users, date_list, ulist):
             earliest = time_list[0]
             # 最晚
             last = time_list[list_len - 1]
-            str = "早: " + utils.TimeToStr(earliest) + "    晚: " + utils.TimeToStr(last)
-            utils.Print(str)
+            #utils.Print("早: " + utils.TimeToStr(earliest) + "    晚: " + utils.TimeToStr(last))
             goal_item = GoalItem(earliest, last)
             user_info.AddGoal(date, goal_item)
 
@@ -97,11 +99,12 @@ def ParseFile(path, dates):
     user_items = ParseToUserItems(table)
     date_list = list(dates)
     date_list.sort()
-    utils.PrintDateList(date_list)
+    #utils.PrintDateList(date_list)
     GetAttendance(users, date_list, user_items)
     work_book = excel_handler.SaveToWorkbook(users, date_list, user_items)
     excel_handler.SaveToExcel(work_book, path)
     return None
+
 
 
 # Dialog
@@ -116,6 +119,19 @@ except ImportError:
     import ttk
 
 from tkcalendar import Calendar, DateEntry
+
+def ParseAndSaveToFile(path, date_list):
+    #sleep(10)
+    # parse file
+    ParseFile(path, date_list)
+    # save file
+    dir_name = os.path.dirname(path)
+    os.startfile(dir_name)
+    # Backup UI
+    process.stop()
+    process.grid_remove()
+    btn_choose_file.grid()
+    btn_parse.grid()
 
 def OnChooseFile():
         path = filedialog.askopenfilename(initialdir = "/", 
@@ -165,34 +181,33 @@ def OnChooseFile():
 
 def OnParse():
     # get date list
+    date_list = []
     ev_ids = cal.get_calevents(tag = "reminder")
     if len(ev_ids) == 0:
         messagebox.showinfo("提示", "需要选中考勤的日期哦")
         return None
-    date_list = []
     for ev_id in ev_ids:
         date = cal.calevent_cget(ev_id, 'date')
         date_list.append(date)
         utils.Print(date)
+
     # get file path
     path = entry.get()
     if len(path) == 0:
         messagebox.showinfo("提示", "好像没有指定考勤文件的路径哦")
         return None
-    # parse file
-    ParseFile(path, date_list)
-    
+
     # check whether the file name is valid
-    date_list = utils.GetDateListFromPath(path)
-    if len(date_list) != 2:
+    path_date_list = utils.GetDateListFromPath(path)
+    if len(path_date_list) != 2:
         messagebox.showinfo("提示", "文件名称的日期格式不正确哦(9.1-9.9.xlsx)")
         return None
-    for dt in date_list:
+    for dt in path_date_list:
         if not utils.StrIsValidDate(dt):
             messagebox.showinfo("提示", "文件名称的日期格式不正确哦(9.1-9.9.xlsx)")
             return None
-    date1 = utils.StrToDate(date_list[0])
-    date2 = utils.StrToDate(date_list[1])
+    date1 = utils.StrToDate(path_date_list[0])
+    date2 = utils.StrToDate(path_date_list[1])
     if date1.month != date2.month:
         messagebox.showinfo("提示", "起止日期必须在同一个月份哦")
         return None
@@ -200,9 +215,21 @@ def OnParse():
         messagebox.showinfo("提示", "结束日期必须大于起始日期哦")
         return None
 
-    # save file
-    dir_name = os.path.dirname(path)
-    os.startfile(dir_name)
+    # show process
+    process.grid()
+    btn_parse.grid_remove()
+    #entry.grid_remove()
+    btn_choose_file.grid_remove()
+    process.start()
+
+    # New thread to parse file
+    th_parse = threading.Thread(target = ParseAndSaveToFile, 
+                                kwargs = {"path": path, "date_list": date_list})
+    th_parse.setDaemon(True)
+    th_parse.start()
+    #td_parse.join()
+
+    
     return None
 
 def OnSelected(event):
@@ -230,13 +257,16 @@ cal = Calendar(root,
                showothermonthdays = False,
                )
 entry = ttk.Entry(root)
-btn = ttk.Button(root, text = "Choose file", command = OnChooseFile)
+btn_choose_file = ttk.Button(root, text = "Choose file", command = OnChooseFile)
 btn_parse = ttk.Button(root, text = "Parse", command = OnParse)
+process = ttk.Progressbar(root, orient = "horizontal", mode = "indeterminate")
 
 cal.grid(row = 0, column = 0, rowspan = 8, columnspan = 8, sticky = tk.N + tk.S + tk.W + tk.E)
 entry.grid(row = 8, column = 0, columnspan = 7, sticky = tk.W + tk.E)
-btn.grid(row = 8, column = 7)
+btn_choose_file.grid(row = 8, column = 7)
 btn_parse.grid(row = 9, column = 0, rowspan = 1, columnspan = 8)
+process.grid(row = 9, column = 0, rowspan = 1, columnspan = 8, sticky = tk.W + tk.E)
+process.grid_remove()
 
 cal.bind("<<CalendarSelected>>", OnSelected)
 cal.bind("<<CalendarMonthChanged>>", OnMonthChanged)
