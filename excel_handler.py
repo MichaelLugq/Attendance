@@ -47,23 +47,23 @@ def SaveToWorkbook(users, date_list, ulist):
         ws = wb.create_sheet(user_info.name)
         counter = 'A'
         for date in date_list:
-            ws["%c1" % counter] = date
-            ws.column_dimensions["%c" % counter].width = 11
+            ws["%s1" % counter] = date
+            ws.column_dimensions["%s" % counter].width = 11
             if date not in user_info.goals:
                 # 无打卡记录
-                ws["%c2" % counter] = '无记录'
-                ws["%c3" % counter] = '无记录'
-                ws["%c2" % counter].font = font
-                ws["%c3" % counter].font = font
+                ws["%s2" % counter] = '无记录'
+                ws["%s3" % counter] = '无记录'
+                ws["%s2" % counter].font = font
+                ws["%s3" % counter].font = font
             else:
                 goal = user_info.goals[date]
-                ws["%c2" % counter] = utils.TimeToStr(goal.earliest)
-                ws["%c3" % counter] = utils.TimeToStr(goal.last)
+                ws["%s2" % counter] = utils.TimeToStr(goal.earliest)
+                ws["%s3" % counter] = utils.TimeToStr(goal.last)
                 if goal.earliest > morning:
-                    ws["%c2" % counter].font = font
+                    ws["%s2" % counter].font = font
                 if goal.last < evening:
-                    ws["%c3" % counter].font = font
-            counter = chr(ord(counter) + 1)
+                    ws["%s3" % counter].font = font
+            counter = utils.GetNextIndexOfExcel(counter)
     return wb
 
 def SaveToExcel(wb, original_xlsx_path):

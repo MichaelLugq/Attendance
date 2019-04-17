@@ -90,3 +90,22 @@ def StrIsValidDate(str):
 def StrToDate(str):
     d = datetime.datetime.strptime(str, "%m.%d")
     return d
+
+def GetNextIndexOfExcel(index):
+    if not isinstance(index, str):
+        return ""
+    length = len(index);
+    if length == 0:
+        return "A"
+    elif length == 1:
+        if (index[0] >= 'A') and (index[0] < 'Z'):
+            return chr(ord(index[0]) + 1)
+        elif index[0] == 'Z':
+            return "AA"
+        return ""
+    elif length == 2:
+        return index[:1] + chr(ord(index[1]) + 1)
+        #return "%c%c" % (index[0], chr(ord(index[1]) + 1))
+    else:
+        return ""
+    return ""
