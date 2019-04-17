@@ -96,15 +96,22 @@ def GetAttendance(users, date_list, ulist):
     return None
 
 def ParseFile(path, dates):
+    process.step(10) # step 10
     table = excel_handler.LoadTable(path)
+    process.step(10) # step 10
     users = excel_handler.GetUsers(table)
+    process.step(20) # step 20
     user_items = ParseToUserItems(table)
+    process.step(20) # step 20
     date_list = list(dates)
     date_list.sort()
     #utils.PrintDateList(date_list)
     GetAttendance(users, date_list, user_items)
+    process.step(10) # step 10
     work_book = excel_handler.SaveToWorkbook(users, date_list, user_items)
+    process.step(20) # step 20
     excel_handler.SaveToExcel(work_book, path)
+    process.step(10) # step 10
     return None
 
 
@@ -122,8 +129,11 @@ except ImportError:
 
 from tkcalendar import Calendar, DateEntry
 
+# 选择文件得到的日期
+global global_date_start
+global global_date_end
+
 def ParseAndSaveToFile(path, date_list):
-    #sleep(10)
     # parse file
     ParseFile(path, date_list)
     # save file
@@ -133,6 +143,7 @@ def ParseAndSaveToFile(path, date_list):
     process.stop()
     process.grid_remove()
     btn_choose_file.grid()
+    check_weekday.grid()
     btn_parse.grid()
 
 def OnChooseFile():
@@ -164,10 +175,14 @@ def OnChooseFile():
                 date_start = datetime.datetime.strptime(start, "%Y.%m.%d").date()
                 date_end = datetime.datetime.strptime(end, "%Y.%m.%d").date()
                 cal.selection_set(date_start)
+                global global_date_start
+                global global_date_end
+                global_date_start = date_start
+                global_date_end = date_end
                 flag = 0;
                 for i in range((date_end - date_start).days + 1):
                     day = date_start + datetime.timedelta(days=i)
-                    if day.weekday() >= 5:
+                    if chkValue.get() and (day.weekday() >= 5):
                         continue
                     if flag == 0:
                         flag+=1
@@ -219,18 +234,16 @@ def OnParse():
 
     # show process
     process.grid()
-    btn_parse.grid_remove()
-    #entry.grid_remove()
     btn_choose_file.grid_remove()
-    process.start()
+    check_weekday.grid_remove()
+    btn_parse.grid_remove()
+    #process.start()
 
     # New thread to parse file
     th_parse = threading.Thread(target = ParseAndSaveToFile, 
                                 kwargs = {"path": path, "date_list": date_list})
     th_parse.setDaemon(True)
     th_parse.start()
-    #td_parse.join()
-
     
     return None
 
@@ -247,6 +260,33 @@ def OnMonthChanged(event):
     cal.calevent_remove("all")
     return None
 
+
+def OnCheckChanged():
+    chkv = chkValue.get()
+    weekday_only = chkv
+    if weekday_only:
+        ev_ids = cal.get_calevents(tag = "reminder")
+        for ev_id in ev_ids: 
+            dt = cal.calevent_cget(ev_id, 'date')
+            if dt.weekday() >= 5:
+                cal.calevent_remove(ev_id)
+        return None
+    else:
+        global global_date_start
+        global global_date_end
+        date_sel = cal.selection_get()
+        date_start = global_date_start
+        date_end = global_date_end
+        if date_sel.year == date_start.year:
+            for i in range((date_end - date_start).days + 1): 
+                day = date_start + datetime.timedelta(days=i)
+                if (day.weekday() >= 5):
+                    ev_ids = cal.get_calevents(date = day, tag = "reminder")
+                    if len(ev_ids) == 0:
+                        cal.calevent_create(date = day, text = 'Hello', tags = ['reminder'])
+        return None
+    return None
+
 root = tk.Tk()
 
 Grid.rowconfigure(root, 0, weight = 1)
@@ -261,12 +301,16 @@ cal = Calendar(root,
 entry = ttk.Entry(root)
 btn_choose_file = ttk.Button(root, text = "Choose file", command = OnChooseFile)
 btn_parse = ttk.Button(root, text = "Parse", command = OnParse)
-process = ttk.Progressbar(root, orient = "horizontal", mode = "indeterminate")
+process = ttk.Progressbar(root, orient = "horizontal", mode = "determinate")
+chkValue = tk.BooleanVar() 
+chkValue.set(False)
+check_weekday = ttk.Checkbutton(root, text = "Weekdays only", var = chkValue, command = OnCheckChanged)
 
 cal.grid(row = 0, column = 0, rowspan = 8, columnspan = 8, sticky = tk.N + tk.S + tk.W + tk.E)
 entry.grid(row = 8, column = 0, columnspan = 7, sticky = tk.W + tk.E)
 btn_choose_file.grid(row = 8, column = 7)
 btn_parse.grid(row = 9, column = 0, rowspan = 1, columnspan = 8)
+check_weekday.grid(row = 9, column = 0, rowspan = 1, columnspan = 4, sticky = tk.W)
 process.grid(row = 9, column = 0, rowspan = 1, columnspan = 8, sticky = tk.W + tk.E)
 process.grid_remove()
 
