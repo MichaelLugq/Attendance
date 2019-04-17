@@ -7,7 +7,7 @@ from openpyxl.styles import Font, Color
 
 import utils
 
-def LoadTable(xlsx_path, read_only = True):
+def LoadTable(xlsx_path, read_only = False):
     excel = load_workbook(xlsx_path, read_only)
     table = excel.active
     return table

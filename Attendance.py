@@ -72,13 +72,13 @@ def GetAttendance(users, date_list, ulist):
             # 1、始终未打卡
             continue
         user_info = ulist[id]
+        user_times = user_info.Times()
         for date in date_list:
-            times = user_info.Times()
-            if date not in times:
+            if date not in user_times:
                 # 2.1、当天没有打卡记录
                 continue
             # 当天打卡记录
-            time_list = list(times[date])
+            time_list = list(user_times[date])
             # 2.2、空列表代表当天没有打卡记录
             list_len = len(time_list)
             if list_len == 0:
@@ -89,9 +89,11 @@ def GetAttendance(users, date_list, ulist):
             earliest = time_list[0]
             # 最晚
             last = time_list[list_len - 1]
+            # TODO: 如果出现早退，查看是否在第二天打卡
             #utils.Print("早: " + utils.TimeToStr(earliest) + "    晚: " + utils.TimeToStr(last))
             goal_item = GoalItem(earliest, last)
             user_info.AddGoal(date, goal_item)
+    return None
 
 def ParseFile(path, dates):
     table = excel_handler.LoadTable(path)
